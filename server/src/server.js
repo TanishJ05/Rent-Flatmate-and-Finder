@@ -1,8 +1,8 @@
 require('dotenv').config();
 const http = require('http');
-const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 const app = require('./app');
+const connectDB = require('./config/db');
 
 const server = http.createServer(app);
 
@@ -22,15 +22,9 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5001;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/rent_flatmate_finder';
 
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('Failed to connect to MongoDB', err);
+connectDB().then(() => {
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
   });
+});
