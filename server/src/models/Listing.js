@@ -16,7 +16,7 @@
  * @property {Date} updatedAt
  */
 
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const listingSchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -37,4 +37,4 @@ const listingSchema = new mongoose.Schema({
 // Index for query performance
 listingSchema.index({ status: 1, 'location.city': 1, rent: 1 });
 
-export default mongoose.model('Listing', listingSchema);
+module.exports = mongoose.model('Listing', listingSchema);

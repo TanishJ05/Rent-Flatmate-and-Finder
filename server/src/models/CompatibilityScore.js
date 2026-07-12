@@ -8,7 +8,7 @@
  * @property {Date} computedAt
  */
 
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const compatibilityScoreSchema = new mongoose.Schema({
   tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -22,4 +22,4 @@ const compatibilityScoreSchema = new mongoose.Schema({
 // Compound unique index on (tenant, listing)
 compatibilityScoreSchema.index({ tenant: 1, listing: 1 }, { unique: true });
 
-export default mongoose.model('CompatibilityScore', compatibilityScoreSchema);
+module.exports = mongoose.model('CompatibilityScore', compatibilityScoreSchema);

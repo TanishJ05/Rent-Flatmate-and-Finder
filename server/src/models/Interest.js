@@ -9,7 +9,7 @@
  * @property {Date} updatedAt
  */
 
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const interestSchema = new mongoose.Schema({
   tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -22,4 +22,4 @@ const interestSchema = new mongoose.Schema({
 // Unique compound index on tenant and listing so a tenant can only express interest once per listing
 interestSchema.index({ tenant: 1, listing: 1 }, { unique: true });
 
-export default mongoose.model('Interest', interestSchema);
+module.exports = mongoose.model('Interest', interestSchema);

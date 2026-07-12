@@ -13,7 +13,7 @@
  * @property {Date} updatedAt
  */
 
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const tenantProfileSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', unique: true, required: true },
@@ -29,4 +29,4 @@ const tenantProfileSchema = new mongoose.Schema({
   preferences: { type: String }
 }, { timestamps: true });
 
-export default mongoose.model('TenantProfile', tenantProfileSchema);
+module.exports = mongoose.model('TenantProfile', tenantProfileSchema);

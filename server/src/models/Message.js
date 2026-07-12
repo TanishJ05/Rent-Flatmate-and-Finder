@@ -8,7 +8,7 @@
  * @property {Date} updatedAt
  */
 
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
   interest: { type: mongoose.Schema.Types.ObjectId, ref: 'Interest', required: true },
@@ -20,4 +20,4 @@ const messageSchema = new mongoose.Schema({
 // Index for query performance: retrieving messages for a specific conversation ordered by creation time
 messageSchema.index({ interest: 1, createdAt: 1 });
 
-export default mongoose.model('Message', messageSchema);
+module.exports = mongoose.model('Message', messageSchema);
