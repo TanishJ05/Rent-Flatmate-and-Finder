@@ -1,29 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, optionalProtect, authorize } = require('../middleware/authMiddleware');
 const {
   createListing,
   getMyListings,
   updateListing,
   updateListingStatus,
-  deleteListing
+  deleteListing,
+  getListings,
+  getListingById
 } = require('../controllers/listingController');
 
-// All routes require authentication and 'owner' role
-router.use(protect);
-router.use(authorize('owner'));
-
 router.route('/')
-  .post(createListing);
+  .get(optionalProtect, getListings)
+  .post(protect, authorize('owner'), createListing);
 
 router.route('/mine')
-  .get(getMyListings);
+  .get(protect, authorize('owner'), getMyListings);
 
 router.route('/:id')
-  .put(updateListing)
-  .delete(deleteListing);
+  .get(getListingById)
+  .put(protect, authorize('owner'), updateListing)
+  .delete(protect, authorize('owner'), deleteListing);
 
 router.route('/:id/status')
-  .patch(updateListingStatus);
+  .patch(protect, authorize('owner'), updateListingStatus);
 
 module.exports = router;

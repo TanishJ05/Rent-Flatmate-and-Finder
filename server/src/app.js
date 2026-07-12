@@ -20,6 +20,7 @@ app.use(cookieParser());
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const listingRoutes = require('./routes/listingRoutes');
+const tenantProfileRoutes = require('./routes/tenantProfileRoutes');
 
 // Routes
 app.get('/api/health', (req, res) => {
@@ -29,6 +30,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/listings', listingRoutes);
+app.use('/api/tenant-profile', tenantProfileRoutes);
 
 // Error Handling Middleware
 app.use(notFound);

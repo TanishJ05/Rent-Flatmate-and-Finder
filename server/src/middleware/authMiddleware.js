@@ -31,16 +31,35 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
+// Optional protect route (does not block if unauthenticated)
+const optionalProtect = asyncHandler(async (req, res, next) => {
+  let token;
+
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id);
+    } catch (err) {
+      // Ignore verification errors for optional auth
+    }
+  }
+
+  next();
+});
+
 // Grant access to specific roles
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
       res.status(403);
-      // Need to use next(error) instead of throwing here since it's not wrapped in asyncHandler by default when called inside another route handler's chain, but actually since we pass it to express it should be fine to throw or next(). Using next() is safer for sync middleware without asyncHandler.
       return next(new Error(`User role ${req.user ? req.user.role : 'undefined'} is not authorized to access this route`));
     }
     next();
   };
 };
 
-module.exports = { protect, authorize };
+module.exports = { protect, optionalProtect, authorize };

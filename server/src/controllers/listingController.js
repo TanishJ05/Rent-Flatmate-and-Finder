@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const Listing = require('../models/Listing');
+const TenantProfile = require('../models/TenantProfile');
 const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Create new listing
@@ -168,10 +170,166 @@ const deleteListing = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get all listings (public browse with optional personalization)
+// @route   GET /api/listings
+// @access  Public (optional auth)
+const getListings = asyncHandler(async (req, res) => {
+  const { city, area, minRent, maxRent, roomType, furnishingStatus, page = 1, limit = 10 } = req.query;
+
+  // 1. Build match query
+  const matchQuery = { status: 'active' };
+
+  if (city) matchQuery['location.city'] = { $regex: new RegExp(city, 'i') };
+  if (area) matchQuery['location.area'] = { $regex: new RegExp(area, 'i') };
+  if (roomType) matchQuery.roomType = roomType;
+  if (furnishingStatus) matchQuery.furnishingStatus = furnishingStatus;
+
+  if (minRent || maxRent) {
+    matchQuery.rent = {};
+    if (minRent) {
+      if (isNaN(minRent)) {
+        res.status(400);
+        throw new Error('minRent must be a valid number');
+      }
+      matchQuery.rent.$gte = Number(minRent);
+    }
+    if (maxRent) {
+      if (isNaN(maxRent)) {
+        res.status(400);
+        throw new Error('maxRent must be a valid number');
+      }
+      matchQuery.rent.$lte = Number(maxRent);
+    }
+  }
+
+  let pageNum = parseInt(page, 10);
+  let limitNum = parseInt(limit, 10);
+  
+  if (isNaN(pageNum) || pageNum < 1) pageNum = 1;
+  if (isNaN(limitNum) || limitNum < 1) limitNum = 10;
+  
+  const skip = (pageNum - 1) * limitNum;
+
+  // 2. Check if user is a tenant with a profile
+  let tenantId = null;
+  if (req.user && req.user.role === 'tenant') {
+    const profile = await TenantProfile.findOne({ user: req.user._id });
+    if (profile) {
+      tenantId = req.user._id;
+    }
+  }
+
+  // 3. Build aggregation pipeline
+  const pipeline = [
+    { $match: matchQuery }
+  ];
+
+  if (tenantId) {
+    pipeline.push({
+      $lookup: {
+        from: 'compatibilityscores',
+        let: { listingId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$listing', '$$listingId'] },
+                  { $eq: ['$tenant', new mongoose.Types.ObjectId(tenantId)] }
+                ]
+              }
+            }
+          }
+        ],
+        as: 'scoreData'
+      }
+    });
+
+    pipeline.push({
+      $addFields: {
+        compatibilityScore: {
+          $cond: {
+            if: { $gt: [{ $size: '$scoreData' }, 0] },
+            then: { $arrayElemAt: ['$scoreData.score', 0] },
+            else: null
+          }
+        },
+        needsScoring: {
+          $cond: {
+            if: { $gt: [{ $size: '$scoreData' }, 0] },
+            then: false,
+            else: true
+          }
+        }
+      }
+    });
+
+    pipeline.push({
+      $project: {
+        scoreData: 0
+      }
+    });
+
+    pipeline.push({
+      $sort: {
+        compatibilityScore: -1,
+        createdAt: -1
+      }
+    });
+  } else {
+    pipeline.push({
+      $sort: {
+        createdAt: -1
+      }
+    });
+  }
+
+  // 4. Facet for pagination
+  pipeline.push({
+    $facet: {
+      metadata: [{ $count: 'totalCount' }],
+      data: [{ $skip: skip }, { $limit: limitNum }]
+    }
+  });
+
+  const results = await Listing.aggregate(pipeline);
+
+  const totalCount = results[0].metadata[0] ? results[0].metadata[0].totalCount : 0;
+  const totalPages = Math.ceil(totalCount / limitNum);
+  const data = results[0].data;
+
+  res.status(200).json({
+    success: true,
+    page: pageNum,
+    totalPages,
+    totalCount,
+    data
+  });
+});
+
+// @desc    Get single listing
+// @route   GET /api/listings/:id
+// @access  Public
+const getListingById = asyncHandler(async (req, res) => {
+  const listing = await Listing.findById(req.params.id).populate('owner', 'name email');
+
+  if (!listing) {
+    res.status(404);
+    throw new Error('Listing not found');
+  }
+
+  res.status(200).json({
+    success: true,
+    data: listing
+  });
+});
+
 module.exports = {
   createListing,
   getMyListings,
   updateListing,
   updateListingStatus,
-  deleteListing
+  deleteListing,
+  getListings,
+  getListingById
 };
