@@ -8,7 +8,8 @@ const {
   updateListingStatus,
   deleteListing,
   getListings,
-  getListingById
+  getListingById,
+  recomputeCompatibility
 } = require('../controllers/listingController');
 
 router.route('/')
@@ -25,5 +26,8 @@ router.route('/:id')
 
 router.route('/:id/status')
   .patch(protect, authorize('owner'), updateListingStatus);
+
+router.route('/:id/compatibility')
+  .post(protect, authorize('tenant'), recomputeCompatibility);
 
 module.exports = router;

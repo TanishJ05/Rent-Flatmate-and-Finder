@@ -298,6 +298,22 @@ const getListings = asyncHandler(async (req, res) => {
   const totalPages = Math.ceil(totalCount / limitNum);
   const data = results[0].data;
 
+  // Compute missing scores for the current page
+  if (tenantId) {
+    const { getOrComputeScore } = require('../services/compatibilityService');
+    await Promise.all(data.map(async (listing) => {
+      if (listing.needsScoring) {
+        // This is a synchronous per-request tradeoff suitable for this assignment scale.
+        // It computes scores on-the-fly for the current page only.
+        const scoreDoc = await getOrComputeScore(tenantId, listing._id);
+        if (scoreDoc) {
+          listing.compatibilityScore = scoreDoc.score;
+          listing.needsScoring = false;
+        }
+      }
+    }));
+  }
+
   res.status(200).json({
     success: true,
     page: pageNum,
@@ -324,6 +340,24 @@ const getListingById = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Force recompute compatibility score for a listing
+// @route   POST /api/listings/:id/compatibility
+// @access  Private/Tenant
+const recomputeCompatibility = asyncHandler(async (req, res) => {
+  const { getOrComputeScore } = require('../services/compatibilityService');
+  const scoreDoc = await getOrComputeScore(req.user._id, req.params.id, true);
+  
+  if (!scoreDoc) {
+    res.status(400);
+    throw new Error('Tenant profile incomplete, cannot compute score.');
+  }
+
+  res.status(200).json({
+    success: true,
+    data: scoreDoc
+  });
+});
+
 module.exports = {
   createListing,
   getMyListings,
@@ -331,5 +365,6 @@ module.exports = {
   updateListingStatus,
   deleteListing,
   getListings,
-  getListingById
+  getListingById,
+  recomputeCompatibility
 };
