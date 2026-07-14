@@ -14,25 +14,7 @@ const { computeRuleBasedScore } = require('./ruleBasedScoringService');
  * @returns {Promise<Object|null>} The compatibility score document, or null if no profile exists.
  */
 const getOrComputeScore = async (tenantId, listingId, forceRecompute = false) => {
-  // 1. Check for existing score (cache) unless forced
-  if (!forceRecompute) {
-    const existingScore = await CompatibilityScore.findOne({
-      tenant: tenantId,
-      listing: listingId
-    });
-
-    if (existingScore) {
-      // Check if it's older than 7 days
-      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-      const isStale = (Date.now() - existingScore.computedAt.getTime()) > SEVEN_DAYS_MS;
-      
-      if (!isStale) {
-        return existingScore;
-      }
-    }
-  }
-
-  // 2. Fetch dependencies
+  // 1. Fetch dependencies first to use their updatedAt timestamps for cache invalidation
   const tenantProfile = await TenantProfile.findOne({ user: tenantId });
   if (!tenantProfile) {
     // Graceful exit for tenants who haven't completed their profile yet
@@ -42,6 +24,28 @@ const getOrComputeScore = async (tenantId, listingId, forceRecompute = false) =>
   const listing = await Listing.findById(listingId);
   if (!listing) {
     throw new Error('Listing not found');
+  }
+
+  // 2. Check for existing score (cache) unless forced
+  if (!forceRecompute) {
+    const existingScore = await CompatibilityScore.findOne({
+      tenant: tenantId,
+      listing: listingId
+    });
+
+    if (existingScore) {
+      // Check if it's older than 7 days
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      const isStaleByTime = (Date.now() - existingScore.computedAt.getTime()) > SEVEN_DAYS_MS;
+      
+      // Check if profile or listing was updated AFTER the score was computed
+      const profileUpdatedAfterScore = tenantProfile.updatedAt && (tenantProfile.updatedAt.getTime() > existingScore.computedAt.getTime());
+      const listingUpdatedAfterScore = listing.updatedAt && (listing.updatedAt.getTime() > existingScore.computedAt.getTime());
+      
+      if (!isStaleByTime && !profileUpdatedAfterScore && !listingUpdatedAfterScore) {
+        return existingScore;
+      }
+    }
   }
 
   // 3. Try computing with LLM

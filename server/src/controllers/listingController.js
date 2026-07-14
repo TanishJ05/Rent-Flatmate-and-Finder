@@ -212,10 +212,12 @@ const getListings = asyncHandler(async (req, res) => {
 
   // 2. Check if user is a tenant with a profile
   let tenantId = null;
+  let tenantProfileUpdatedAt = null;
   if (req.user && req.user.role === 'tenant') {
     const profile = await TenantProfile.findOne({ user: req.user._id });
     if (profile) {
       tenantId = req.user._id;
+      tenantProfileUpdatedAt = profile.updatedAt;
     }
   }
 
@@ -255,10 +257,24 @@ const getListings = asyncHandler(async (req, res) => {
           }
         },
         needsScoring: {
-          $cond: {
-            if: { $gt: [{ $size: '$scoreData' }, 0] },
-            then: false,
-            else: true
+          $let: {
+            vars: {
+              scoreDoc: { $arrayElemAt: ['$scoreData', 0] },
+              sevenDaysAgo: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            },
+            in: {
+              $cond: {
+                if: { $eq: [{ $size: '$scoreData' }, 0] },
+                then: true,
+                else: {
+                  $or: [
+                    { $lt: ['$$scoreDoc.computedAt', '$$sevenDaysAgo'] },
+                    { $lt: ['$$scoreDoc.computedAt', tenantProfileUpdatedAt] },
+                    { $lt: ['$$scoreDoc.computedAt', '$updatedAt'] }
+                  ]
+                }
+              }
+            }
           }
         }
       }
