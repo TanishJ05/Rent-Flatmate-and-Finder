@@ -19,6 +19,7 @@ import PostListing from "./features/owner/pages/PostListing";
 import IncomingInterests from "./features/owner/pages/IncomingInterests";
 import OwnerDashboard from "./features/owner/pages/OwnerDashboard";
 import AdminDashboard from "./features/admin/pages/AdminDashboard";
+import ChatRoom from "./features/chat/pages/ChatRoom";
 
 function App() {
   return (
@@ -50,6 +51,11 @@ function App() {
             {/* Admin Routes */}
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
               <Route path="admin/*" element={<AdminDashboard />} />
+            </Route>
+
+            {/* Chat Routes (Tenant and Owner) */}
+            <Route element={<ProtectedRoute allowedRoles={["tenant", "owner"]} />}>
+              <Route path="chat/:interestId" element={<ChatRoom />} />
             </Route>
             
             {/* 404 Catch-all */}

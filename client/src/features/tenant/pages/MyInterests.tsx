@@ -97,6 +97,17 @@ const MyInterests = () => {
                   <p>Owner: {interest.owner.name}</p>
                   <p>Requested on: {new Date(interest.createdAt).toLocaleDateString()}</p>
                 </div>
+
+                {interest.status === 'accepted' && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <Link
+                      to={`/chat/${interest._id}`}
+                      className="block w-full text-center py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium text-sm transition shadow-sm"
+                    >
+                      Open Chat
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           ))}

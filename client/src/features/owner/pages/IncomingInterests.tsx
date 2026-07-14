@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import axiosInstance from "../../../api/axiosInstance";
 
 interface Interest {
@@ -116,11 +117,21 @@ const IncomingInterests = () => {
                     </button>
                   </>
                 ) : (
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    interest.status === 'accepted' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {interest.status.charAt(0).toUpperCase() + interest.status.slice(1)}
-                  </span>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      interest.status === 'accepted' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {interest.status.charAt(0).toUpperCase() + interest.status.slice(1)}
+                    </span>
+                    {interest.status === 'accepted' && (
+                      <Link
+                        to={`/chat/${interest._id}`}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition shadow-sm whitespace-nowrap"
+                      >
+                        Chat
+                      </Link>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
