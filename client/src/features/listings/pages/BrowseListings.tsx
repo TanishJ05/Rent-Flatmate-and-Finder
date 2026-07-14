@@ -15,6 +15,7 @@ interface Listing {
   furnishingStatus: string;
   photos: string[];
   compatibilityScore?: number;
+  compatibilityExplanation?: string;
   needsScoring?: boolean;
 }
 
@@ -193,13 +194,20 @@ const BrowseListings = () => {
                             Calculating...
                           </span>
                         ) : listing.compatibilityScore !== undefined ? (
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm ${
-                            listing.compatibilityScore >= 80 
-                              ? 'bg-green-100 text-green-800 border border-green-300' 
-                              : 'bg-white text-gray-700 border border-gray-200'
-                          }`}>
-                            {listing.compatibilityScore >= 80 && '🌟 '}{listing.compatibilityScore}% Match
-                          </span>
+                          <div className="group/tooltip relative">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm cursor-help ${
+                              listing.compatibilityScore >= 80 
+                                ? 'bg-green-100 text-green-800 border border-green-300' 
+                                : 'bg-white text-gray-700 border border-gray-200'
+                            }`}>
+                              {listing.compatibilityScore >= 80 && '🌟 '}{listing.compatibilityScore}% Match
+                            </span>
+                            {listing.compatibilityExplanation && (
+                              <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-20">
+                                {listing.compatibilityExplanation}
+                              </div>
+                            )}
+                          </div>
                         ) : null}
                       </div>
                     )}
