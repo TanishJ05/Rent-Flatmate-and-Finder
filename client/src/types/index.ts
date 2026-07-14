@@ -12,6 +12,7 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null;
+  socketToken: string | null;
   loading: boolean;
   login: (data: any) => Promise<void>;
   register: (data: any) => Promise<void>;

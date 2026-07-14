@@ -7,6 +7,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [socketToken, setSocketToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const refetchMe = async () => {
@@ -14,11 +15,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await axiosInstance.get("/auth/me");
       if (res.data.success) {
         setUser(res.data.user || res.data.data);
+        setSocketToken(res.data.socketToken || null);
       } else {
         setUser(null);
+        setSocketToken(null);
       }
     } catch (error) {
       setUser(null);
+      setSocketToken(null);
     } finally {
       setLoading(false);
     }
@@ -32,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const handleUnauthorized = () => {
       setUser(null);
+      setSocketToken(null);
     };
 
     window.addEventListener("unauthorized", handleUnauthorized);
@@ -62,11 +67,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Logout failed", error);
     } finally {
       setUser(null);
+      setSocketToken(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refetchMe }}>
+    <AuthContext.Provider value={{ user, socketToken, loading, login, register, logout, refetchMe }}>
       {children}
     </AuthContext.Provider>
   );

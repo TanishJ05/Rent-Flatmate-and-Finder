@@ -15,7 +15,7 @@ interface Message {
 const ChatRoom = () => {
   const { interestId } = useParams<{ interestId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, socketToken, refetchMe } = useAuth();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -25,15 +25,27 @@ const ChatRoom = () => {
   
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketTokenRef = useRef(socketToken);
+  const initializedInterestRef = useRef<string | null>(null);
 
   useEffect(() => {
+    socketTokenRef.current = socketToken;
+  }, [socketToken]);
+
+  useEffect(() => {
+    if (!user || !socketTokenRef.current) return;
+    if (initializedInterestRef.current === interestId) return;
+
     fetchHistoricalMessages();
     setupSocket();
+    initializedInterestRef.current = interestId;
 
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
+      initializedInterestRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interestId]);
@@ -68,7 +80,7 @@ const ChatRoom = () => {
       : "http://localhost:5001";
 
     const socket = io(SOCKET_URL, {
-      withCredentials: true,
+      auth: (cb) => cb({ token: socketTokenRef.current }),
     });
 
     socketRef.current = socket;
@@ -79,8 +91,11 @@ const ChatRoom = () => {
     });
 
     socket.on("connect_error", (err) => {
-      setSocketError("Unable to connect to chat server.");
       console.error("Socket connect_error:", err.message);
+      if (err.message.includes("Authentication error")) {
+        refetchMe();
+      }
+      setSocketError("Unable to connect to chat server.");
     });
 
     socket.on("room_error", (data: { message: string }) => {

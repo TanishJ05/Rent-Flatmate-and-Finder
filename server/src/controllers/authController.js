@@ -135,9 +135,18 @@ const getMe = asyncHandler(async (req, res, next) => {
   // req.user is populated by protect middleware
   const user = await User.findById(req.user.id);
   
+  // Generate a short-lived token specifically for Socket.io handshakes
+  // This avoids relying on cross-origin cookies which are blocked by Safari ITP
+  const socketToken = jwt.sign(
+    { id: user._id, purpose: 'socket' },
+    process.env.SOCKET_TOKEN_SECRET || process.env.JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+  
   res.status(200).json({
     success: true,
     user,
+    socketToken,
   });
 });
 

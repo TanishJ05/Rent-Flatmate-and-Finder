@@ -1,5 +1,4 @@
 const { Server } = require('socket.io');
-const cookie = require('cookie');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Interest = require('../models/Interest');
@@ -17,18 +16,19 @@ const initSockets = (server) => {
   // Socket auth middleware
   io.use(async (socket, next) => {
     try {
-      if (!socket.handshake.headers.cookie) {
-        return next(new Error('Authentication error: Missing cookies'));
-      }
-      
-      const cookies = cookie.parse(socket.handshake.headers.cookie);
-      const token = cookies.token;
+      const token = socket.handshake.auth.token;
       
       if (!token) {
         return next(new Error('Authentication error: Missing token'));
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const secret = process.env.SOCKET_TOKEN_SECRET || process.env.JWT_SECRET;
+      const decoded = jwt.verify(token, secret);
+      
+      if (decoded.purpose !== 'socket') {
+        return next(new Error('Authentication error: Invalid token purpose'));
+      }
+
       const user = await User.findById(decoded.id);
 
       if (!user) {
