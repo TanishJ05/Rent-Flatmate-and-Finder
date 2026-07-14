@@ -4,7 +4,9 @@ const {
   getIncomingInterests,
   getSentInterests,
   acceptInterest,
-  declineInterest
+  declineInterest,
+  getMessages,
+  markMessagesRead
 } = require('../controllers/interestController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -26,5 +28,12 @@ router.route('/:id/accept')
 
 router.route('/:id/decline')
   .patch(protect, authorize('owner'), declineInterest);
+
+// Shared route for messages within an interest (protected, role checked in controller)
+router.route('/:id/messages')
+  .get(protect, getMessages);
+
+router.route('/:id/messages/read')
+  .patch(protect, markMessagesRead);
 
 module.exports = router;

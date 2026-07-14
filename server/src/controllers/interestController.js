@@ -1,5 +1,6 @@
 const Interest = require('../models/Interest');
 const Listing = require('../models/Listing');
+const Message = require('../models/Message');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { getOrComputeScore } = require('../services/compatibilityService');
@@ -219,10 +220,108 @@ const declineInterest = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get messages for an interest
+// @route   GET /api/interests/:id/messages
+// @access  Private
+const getMessages = asyncHandler(async (req, res) => {
+  const interest = await Interest.findById(req.params.id);
+
+  if (!interest) {
+    res.status(404);
+    throw new Error('Interest not found');
+  }
+
+  // Check if user is participant
+  if (
+    interest.tenant.toString() !== req.user._id.toString() &&
+    interest.owner.toString() !== req.user._id.toString()
+  ) {
+    res.status(403);
+    throw new Error('Not authorized to access messages for this interest');
+  }
+
+  // Check if accepted
+  if (interest.status !== 'accepted') {
+    res.status(400);
+    throw new Error('Interest is not accepted');
+  }
+
+  // Pagination
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 50;
+  const skip = (page - 1) * limit;
+
+  // Fetch messages, oldest-first (for chat UI)
+  const messages = await Message.find({ interest: req.params.id })
+    .sort({ createdAt: 1 }) // oldest first
+    .skip(skip)
+    .limit(limit)
+    .populate('sender', 'name role profilePicture');
+
+  const total = await Message.countDocuments({ interest: req.params.id });
+
+  res.status(200).json({
+    success: true,
+    count: messages.length,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    },
+    data: messages
+  });
+});
+
+// @desc    Mark messages as read for an interest
+// @route   PATCH /api/interests/:id/messages/read
+// @access  Private
+const markMessagesRead = asyncHandler(async (req, res) => {
+  const interest = await Interest.findById(req.params.id);
+
+  if (!interest) {
+    res.status(404);
+    throw new Error('Interest not found');
+  }
+
+  // Check if user is participant
+  if (
+    interest.tenant.toString() !== req.user._id.toString() &&
+    interest.owner.toString() !== req.user._id.toString()
+  ) {
+    res.status(403);
+    throw new Error('Not authorized to access messages for this interest');
+  }
+
+  if (interest.status !== 'accepted') {
+    res.status(400);
+    throw new Error('Interest is not accepted');
+  }
+
+  // Mark all unread messages in this interest NOT sent by current user as read
+  await Message.updateMany(
+    {
+      interest: req.params.id,
+      sender: { $ne: req.user._id },
+      readAt: null
+    },
+    {
+      $set: { readAt: new Date() }
+    }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Messages marked as read'
+  });
+});
+
 module.exports = {
   createInterest,
   getIncomingInterests,
   getSentInterests,
   acceptInterest,
-  declineInterest
+  declineInterest,
+  getMessages,
+  markMessagesRead
 };
