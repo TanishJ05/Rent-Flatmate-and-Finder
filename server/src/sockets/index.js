@@ -122,27 +122,23 @@ const initSockets = (server) => {
          *   without the client having to ask for them, enabling true real-time communication.
          */
 
-        // TODO: Phase 14 - Persist message to MongoDB Message collection
-        const mongoose = require('mongoose');
-        
-        // Create a temporary message object to broadcast
-        const mockMessage = {
-          _id: new mongoose.Types.ObjectId(), // Mock ID for frontend
+        // Persist message to MongoDB Message collection
+        const message = new Message({
           interest: interestId,
-          sender: {
-            _id: socket.user._id,
-            name: socket.user.name,
-            role: socket.user.role
-          },
-          content,
-          createdAt: new Date().toISOString()
-        };
+          sender: socket.user._id,
+          content: content
+        });
+
+        const savedMessage = await message.save();
+
+        // Populate sender details before broadcasting
+        const populatedMessage = await Message.findById(savedMessage._id)
+          .populate('sender', 'name role');
 
         // Emit to all sockets in the room, including sender
-        // Broadcasts a receive_message event to all other users in that specific interestId room
-        socket.to(roomName).emit('receive_message', mockMessage);
-        // also send it back to the sender so they can render it
-        socket.emit('receive_message', mockMessage);
+        socket.to(roomName).emit('receive_message', populatedMessage);
+        // Also send it back to the sender so they can render it
+        socket.emit('receive_message', populatedMessage);
         
       } catch (err) {
         console.error('Send message error:', err);
