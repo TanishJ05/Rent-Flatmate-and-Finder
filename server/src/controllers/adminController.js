@@ -41,10 +41,10 @@ const getUsers = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Deactivate a user
-// @route   PATCH /api/admin/users/:id/deactivate
+// @desc    Toggle a user's account status
+// @route   PATCH /api/admin/users/:id/status
 // @access  Private/Admin
-const deactivateUser = asyncHandler(async (req, res) => {
+const toggleUserStatus = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
 
   if (!user) {
@@ -54,35 +54,21 @@ const deactivateUser = asyncHandler(async (req, res) => {
 
   if (user.role === 'admin') {
     res.status(400);
-    throw new Error('Cannot deactivate another admin');
+    throw new Error('Cannot toggle status of another admin');
   }
 
-  user.active = false;
+  user.active = !user.active;
   await user.save();
 
   res.status(200).json({
     success: true,
-    message: 'User deactivated successfully'
-  });
-});
-
-// @desc    Activate a user
-// @route   PATCH /api/admin/users/:id/activate
-// @access  Private/Admin
-const activateUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
-
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
-  }
-
-  user.active = true;
-  await user.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'User activated successfully'
+    message: `User ${user.active ? 'activated' : 'suspended'} successfully`,
+    data: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      active: user.active
+    }
   });
 });
 
@@ -118,10 +104,11 @@ const getListings = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Delete any listing
-// @route   DELETE /api/admin/listings/:id
+// @desc    Update listing status
+// @route   PATCH /api/admin/listings/:id/status
 // @access  Private/Admin
-const deleteListing = asyncHandler(async (req, res) => {
+const updateListingStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
   const listing = await Listing.findById(req.params.id);
 
   if (!listing) {
@@ -129,83 +116,60 @@ const deleteListing = asyncHandler(async (req, res) => {
     throw new Error('Listing not found');
   }
 
-  await listing.deleteOne();
+  if (status && ['active', 'filled', 'removed'].includes(status)) {
+    listing.status = status;
+  } else {
+    // default to removed if no explicit status is given
+    listing.status = 'removed';
+  }
+
+  await listing.save();
 
   res.status(200).json({
     success: true,
-    data: {}
+    data: listing
   });
 });
 
 // @desc    Get platform activity summary
-// @route   GET /api/admin/activity
+// @route   GET /api/admin/stats
 // @access  Private/Admin
-const getActivity = asyncHandler(async (req, res) => {
-  // Aggregate users by role
-  const userStats = await User.aggregate([
-    { $group: { _id: '$role', count: { $sum: 1 } } }
+const getStats = asyncHandler(async (req, res) => {
+  const [
+    totalUsers,
+    totalListings,
+    totalMessages,
+    pendingInterests,
+    acceptedInterests,
+    declinedInterests
+  ] = await Promise.all([
+    User.countDocuments(),
+    Listing.countDocuments(),
+    Message.countDocuments(),
+    Interest.countDocuments({ status: 'pending' }),
+    Interest.countDocuments({ status: 'accepted' }),
+    Interest.countDocuments({ status: 'declined' })
   ]);
-  const usersByRole = { tenant: 0, owner: 0, admin: 0 };
-  userStats.forEach(stat => {
-    if (stat._id) usersByRole[stat._id] = stat.count;
-  });
-
-  // Aggregate listings by status
-  const listingStats = await Listing.aggregate([
-    { $group: { _id: '$status', count: { $sum: 1 } } }
-  ]);
-  const listingsByStatus = { active: 0, filled: 0 };
-  listingStats.forEach(stat => {
-    if (stat._id) listingsByStatus[stat._id] = stat.count;
-  });
-
-  // Aggregate interests by status
-  const interestStats = await Interest.aggregate([
-    { $group: { _id: '$status', count: { $sum: 1 } } }
-  ]);
-  const interestsByStatus = { pending: 0, accepted: 0, declined: 0 };
-  interestStats.forEach(stat => {
-    if (stat._id) interestsByStatus[stat._id] = stat.count;
-  });
-
-  // Total messages count
-  const totalMessages = await Message.countDocuments();
-
-  // 10 most recent interests
-  const recentInterests = await Interest.find()
-    .populate('tenant', 'name')
-    .populate('listing', 'location')
-    .sort({ createdAt: -1 })
-    .limit(10)
-    .select('tenant listing status createdAt');
-
-  const activityFeed = recentInterests.map(interest => ({
-    _id: interest._id,
-    tenantName: interest.tenant?.name || 'Unknown',
-    listingLocation: interest.listing?.location 
-      ? `${interest.listing.location.city}, ${interest.listing.location.area}` 
-      : 'Unknown',
-    status: interest.status,
-    createdAt: interest.createdAt
-  }));
 
   res.status(200).json({
     success: true,
     data: {
-      usersByRole,
-      listingsByStatus,
-      interestsByStatus,
-      totalMessages,
-      activityFeed
+      users: totalUsers,
+      listings: totalListings,
+      messages: totalMessages,
+      interests: {
+        pending: pendingInterests,
+        accepted: acceptedInterests,
+        declined: declinedInterests
+      }
     }
   });
 });
 
 module.exports = {
   getUsers,
-  deactivateUser,
-  activateUser,
+  toggleUserStatus,
   getListings,
-  deleteListing,
-  getActivity
+  updateListingStatus,
+  getStats
 };

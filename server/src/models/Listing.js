@@ -11,7 +11,7 @@
  * @property {'furnished' | 'semi-furnished' | 'unfurnished'} furnishingStatus
  * @property {string[]} photos
  * @property {string} description
- * @property {'active' | 'filled'} status
+ * @property {'active' | 'filled' | 'removed'} status
  * @property {Date} createdAt
  * @property {Date} updatedAt
  */
@@ -31,7 +31,7 @@ const listingSchema = new mongoose.Schema({
   furnishingStatus: { type: String, enum: ['furnished', 'semi-furnished', 'unfurnished'], required: true },
   photos: [{ type: String }],
   description: { type: String },
-  status: { type: String, enum: ['active', 'filled'], default: 'active' }
+  status: { type: String, enum: ['active', 'filled', 'removed'], default: 'active' }
 }, { timestamps: true });
 
 // Index for query performance

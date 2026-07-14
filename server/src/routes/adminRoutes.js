@@ -1,14 +1,12 @@
 const express = require('express');
 const { protect, authorize } = require('../middleware/authMiddleware');
-const asyncHandler = require('../utils/asyncHandler');
 
 const {
   getUsers,
-  deactivateUser,
-  activateUser,
+  toggleUserStatus,
   getListings,
-  deleteListing,
-  getActivity
+  updateListingStatus,
+  getStats
 } = require('../controllers/adminController');
 
 const router = express.Router();
@@ -19,14 +17,13 @@ router.use(authorize('admin'));
 
 // User Management Routes
 router.get('/users', getUsers);
-router.patch('/users/:id/deactivate', deactivateUser);
-router.patch('/users/:id/activate', activateUser);
+router.patch('/users/:id/status', toggleUserStatus);
 
 // Listing Management Routes
 router.get('/listings', getListings);
-router.delete('/listings/:id', deleteListing);
+router.patch('/listings/:id/status', updateListingStatus);
 
 // Platform Activity Routes
-router.get('/activity', getActivity);
+router.get('/stats', getStats);
 
 module.exports = router;
