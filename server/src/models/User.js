@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ['tenant', 'owner', 'admin'], required: true },
-  phone: { type: String }
+  phone: { type: String },
+  active: { type: Boolean, default: true }
 }, { timestamps: true });
 
 // Pre-save hook to hash password with bcrypt

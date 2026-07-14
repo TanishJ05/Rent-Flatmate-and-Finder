@@ -98,6 +98,11 @@ const login = asyncHandler(async (req, res, next) => {
     throw new Error('Invalid credentials');
   }
 
+  if (user.active === false) {
+    res.status(403);
+    throw new Error('Your account has been deactivated. Please contact support.');
+  }
+
   // Check if password matches
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
