@@ -26,7 +26,7 @@ const ChatRoom = () => {
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketTokenRef = useRef(socketToken);
-  const initializedInterestRef = useRef<string | null>(null);
+  const initializedInterestRef = useRef<string | undefined | null>(null);
 
   useEffect(() => {
     socketTokenRef.current = socketToken;
