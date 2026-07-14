@@ -4,12 +4,7 @@ const Message = require('../models/Message');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { getOrComputeScore } = require('../services/compatibilityService');
-const {
-  notifyOwnerNewInterest,
-  notifyOwnerHighCompatibilityInterest,
-  notifyTenantRequestAccepted,
-  notifyTenantRequestDeclined
-} = require('../services/emailService');
+const emailService = require('../services/emailService');
 const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Create new interest request
@@ -72,9 +67,9 @@ const createInterest = asyncHandler(async (req, res) => {
   if (owner && owner.email) {
     const listingTitle = listing.location?.address || 'your property';
     if (scoreDoc && scoreDoc.score > 80) {
-      notifyOwnerHighCompatibilityInterest(owner.email, owner.name, req.user.name, listingTitle, scoreDoc.score);
+      emailService.notifyOwnerHighCompatibilityInterest(owner.email, owner.name, req.user.name, listingTitle, scoreDoc.score);
     } else {
-      notifyOwnerNewInterest(owner.email, owner.name, req.user.name, listingTitle);
+      emailService.notifyOwnerNewInterest(owner.email, owner.name, req.user.name, listingTitle);
     }
   }
 
@@ -154,7 +149,7 @@ const acceptInterest = asyncHandler(async (req, res) => {
   if (tenant && tenant.email) {
     const listingTitle = interest.listing.location?.address || 'a listing';
     const contactInfo = req.user.phone || req.user.email; // Owner accepting is req.user
-    notifyTenantRequestAccepted(tenant.email, tenant.name, req.user.name, listingTitle, contactInfo);
+    emailService.notifyTenantRequestAccepted(tenant.email, tenant.name, req.user.name, listingTitle, contactInfo);
   }
 
   res.status(200).json({
@@ -200,7 +195,7 @@ const declineInterest = asyncHandler(async (req, res) => {
   const tenant = await User.findById(interest.tenant);
   if (tenant && tenant.email) {
     const listingTitle = interest.listing.location?.address || 'a listing';
-    notifyTenantRequestDeclined(tenant.email, tenant.name, listingTitle);
+    emailService.notifyTenantRequestDeclined(tenant.email, tenant.name, listingTitle);
   }
 
   res.status(200).json({
