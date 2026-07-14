@@ -4,7 +4,12 @@ const Message = require('../models/Message');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { getOrComputeScore } = require('../services/compatibilityService');
-const { sendEmail, getHighCompatibilityTemplate, getDecisionOutcomeTemplate } = require('../services/emailService');
+const {
+  notifyOwnerNewInterest,
+  notifyOwnerHighCompatibilityInterest,
+  notifyTenantRequestAccepted,
+  notifyTenantRequestDeclined
+} = require('../services/emailService');
 const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Create new interest request
@@ -62,19 +67,14 @@ const createInterest = asyncHandler(async (req, res) => {
     message: `A new tenant has expressed interest in your listing at ${listing.location?.address || 'your property'}.`
   });
 
-  // 6. Send Email if score > 80
-  if (scoreDoc && scoreDoc.score > 80) {
-    const owner = await User.findById(listing.owner);
-    if (owner && owner.email) {
-      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-      const emailHtml = getHighCompatibilityTemplate(scoreDoc.score, clientUrl);
-      
-      // Best-effort send, don't await blocking
-      sendEmail({
-        to: owner.email,
-        subject: 'High Compatibility Tenant Alert!',
-        html: emailHtml
-      });
+  // 6. Send Email Notification
+  const owner = await User.findById(listing.owner);
+  if (owner && owner.email) {
+    const listingTitle = listing.location?.address || 'your property';
+    if (scoreDoc && scoreDoc.score > 80) {
+      notifyOwnerHighCompatibilityInterest(owner.email, owner.name, req.user.name, listingTitle, scoreDoc.score);
+    } else {
+      notifyOwnerNewInterest(owner.email, owner.name, req.user.name, listingTitle);
     }
   }
 
@@ -152,14 +152,9 @@ const acceptInterest = asyncHandler(async (req, res) => {
   // Send Email to tenant
   const tenant = await User.findById(interest.tenant);
   if (tenant && tenant.email) {
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    const emailHtml = getDecisionOutcomeTemplate('accepted', clientUrl);
-    
-    sendEmail({
-      to: tenant.email,
-      subject: 'Interest Accepted!',
-      html: emailHtml
-    });
+    const listingTitle = interest.listing.location?.address || 'a listing';
+    const contactInfo = req.user.phone || req.user.email; // Owner accepting is req.user
+    notifyTenantRequestAccepted(tenant.email, tenant.name, req.user.name, listingTitle, contactInfo);
   }
 
   res.status(200).json({
@@ -204,14 +199,8 @@ const declineInterest = asyncHandler(async (req, res) => {
   // Send Email to tenant
   const tenant = await User.findById(interest.tenant);
   if (tenant && tenant.email) {
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    const emailHtml = getDecisionOutcomeTemplate('declined', clientUrl);
-    
-    sendEmail({
-      to: tenant.email,
-      subject: 'Interest Declined',
-      html: emailHtml
-    });
+    const listingTitle = interest.listing.location?.address || 'a listing';
+    notifyTenantRequestDeclined(tenant.email, tenant.name, listingTitle);
   }
 
   res.status(200).json({
