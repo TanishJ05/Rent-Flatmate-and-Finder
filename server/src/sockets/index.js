@@ -58,6 +58,7 @@ const initSockets = (server) => {
           return socket.emit('room_error', { message: 'Cannot join room: Interest is not accepted' });
         }
 
+        // Verify if sender is actually a participant of this interest
         const isParticipant = 
           interest.tenant.toString() === socket.user._id.toString() || 
           interest.owner.toString() === socket.user._id.toString();
@@ -97,22 +98,54 @@ const initSockets = (server) => {
         if (!isParticipant) {
           return socket.emit('room_error', { message: 'Not authorized to send messages to this room' });
         }
-
-        // Persist message
-        const message = await Message.create({
-          interest: interestId,
-          sender: socket.user._id,
-          content
-        });
-
-        // Populate sender info for the client
-        await message.populate('sender', 'name role');
-
+        
+        // Verify the sender is currently in the socket room
         const roomName = `interest:${interestId}`;
+        if (!socket.rooms.has(roomName)) {
+            return socket.emit('room_error', { message: 'You must join the room before sending a message' });
+        }
+
+        /* 
+         * ARCHITECTURAL EXPLANATION:
+         * We gate room access by querying the Interest document to ensure that only the verified 
+         * owner or tenant of this specific conversation can join the room or send messages. 
+         * Blindly trusting the client ID or relying solely on the client saying "I belong in this room" 
+         * would allow malicious users to join any arbitrary room by simply guessing the interestId, 
+         * leading to severe privacy leaks.
+         * 
+         * REST APIs vs. WebSockets for Chat:
+         * - REST APIs are stateless, request-response driven, and strictly initiated by the client. 
+         *   To get new messages, the client would have to continuously poll the server, which is 
+         *   inefficient and resource-heavy.
+         * - WebSockets provide a persistent, stateful, bi-directional connection. This allows the 
+         *   server to instantly push (broadcast) new messages to all connected clients in the room 
+         *   without the client having to ask for them, enabling true real-time communication.
+         */
+
+        // TODO: Phase 14 - Persist message to MongoDB Message collection
+        const mongoose = require('mongoose');
+        
+        // Create a temporary message object to broadcast
+        const mockMessage = {
+          _id: new mongoose.Types.ObjectId(), // Mock ID for frontend
+          interest: interestId,
+          sender: {
+            _id: socket.user._id,
+            name: socket.user.name,
+            role: socket.user.role
+          },
+          content,
+          createdAt: new Date().toISOString()
+        };
+
         // Emit to all sockets in the room, including sender
-        io.to(roomName).emit('receive_message', message);
+        // Broadcasts a receive_message event to all other users in that specific interestId room
+        socket.to(roomName).emit('receive_message', mockMessage);
+        // also send it back to the sender so they can render it
+        socket.emit('receive_message', mockMessage);
         
       } catch (err) {
+        console.error('Send message error:', err);
         socket.emit('room_error', { message: 'Failed to send message' });
       }
     });
