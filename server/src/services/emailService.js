@@ -46,11 +46,14 @@ const sendEmail = async ({ to, subject, html }) => {
       html
     });
 
-    console.log(`[EmailService] Email sent to ${to}: ${info.messageId}`);
-    
-    // If we are using ethereal, print the test message URL so we can view it
-    if (!process.env.SMTP_HOST) {
-      console.log(`[EmailService] Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+    // Only log if we are NOT running Jest tests to prevent async bleeding
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[EmailService] Email sent to ${to}: ${info.messageId}`);
+      
+      // If we are using ethereal, print the test message URL so we can view it
+      if (!process.env.SMTP_HOST) {
+        console.log(`[EmailService] Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+      }
     }
   } catch (error) {
     // Non-blocking fault tolerance: log the error but don't throw

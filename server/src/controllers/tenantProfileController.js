@@ -22,7 +22,7 @@ const createOrUpdateProfile = asyncHandler(async (req, res) => {
     profile = await TenantProfile.findOneAndUpdate(
       { user: req.user._id },
       { $set: profileFields },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
   } else {
     profile = await TenantProfile.create(profileFields);
