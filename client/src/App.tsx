@@ -17,6 +17,7 @@ import MyInterests from "./features/tenant/pages/MyInterests";
 import MyListings from "./features/owner/pages/MyListings";
 import PostListing from "./features/owner/pages/PostListing";
 import IncomingInterests from "./features/owner/pages/IncomingInterests";
+import OwnerDashboard from "./features/owner/pages/OwnerDashboard";
 import AdminDashboard from "./features/admin/pages/AdminDashboard";
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
 
             {/* Owner Routes */}
             <Route element={<ProtectedRoute allowedRoles={["owner"]} />}>
+              <Route path="owner/dashboard" element={<OwnerDashboard />} />
               <Route path="owner/listings" element={<MyListings />} />
               <Route path="owner/post" element={<PostListing />} />
               <Route path="owner/interests" element={<IncomingInterests />} />
