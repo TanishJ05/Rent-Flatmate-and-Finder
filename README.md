@@ -1,5 +1,5 @@
+DeploymentLink - https://rent-flatmate-and-finder-client.vercel.app/
 # Rent-Flatmate-and-Finder
-
 ## Overview
 A comprehensive MERN stack application designed to intelligently match tenants with available room listings. It leverages an AI-powered compatibility scoring engine, real-time communication capabilities, and role-based workflows to streamline the process of finding the perfect flatmate or tenant.
 
